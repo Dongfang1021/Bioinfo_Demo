@@ -28,8 +28,8 @@ def readATGC_buffer(buf, s, e):
 
 def main():
     p = optparse.OptionParser()
-    p.add_option('--fa', '-f', default="19Q3/Homo_sapiens.GRCh38.dna.chromosome.1.fa")
-    p.add_option('--gtf', '-g', default="19Q3/Homo_sapiens.GRCh38.97.chr1.gtf")
+    p.add_option('--fa', '-f', default="./Homo_sapiens.GRCh38.dna.chromosome.1.fa")
+    p.add_option('--gtf', '-g', default="./Homo_sapiens.GRCh38.97.chr1.gtf")
 
     options, arguments = p.parse_args()
 
