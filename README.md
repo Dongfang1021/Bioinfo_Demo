@@ -1,2 +1,2 @@
-# Bioinfo_Demo
-Some python scripts written in my Ph.D time. More details will be updated later.
+# Useful Bioinformatics scripts
+This is a collection of short scripts which are used in my daily bioinformatics anlaysis work.
