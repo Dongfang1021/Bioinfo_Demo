@@ -1,8 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
-# Author     : Dongfang Hu
-# Contact    : dfhu2019@gmail.com
-# LastUpdate : 2020-01-20
 
 
 from __future__ import print_function
