@@ -1,0 +1,52 @@
+
+suppressMessages({
+library(argparser)
+library(ggrepel)
+library(ggplot2)})
+
+argv <- arg_parser('')
+argv <- add_argument(argv,"--fpkm", help="the fpkm file")
+argv <- add_argument(argv,"--condition", help="the condition file")
+argv <- add_argument(argv,"--prefix", help="the prefix of outfile")
+argv <- parse_args(argv)
+
+fpkm <- argv$fpkm
+condition <- argv$condition
+prefix <- argv$prefix
+
+fpkm <- read.delim(fpkm,header=TRUE,sep='\t',row.names=1)
+condition <- read.delim(condition,header=TRUE,sep='\t')
+groupdata <- condition[!duplicated(as.character(condition$sample)),]
+sample <- as.character(unique(groupdata$sample))
+group <- as.character(unique(groupdata$group))
+groupdata$group <- factor(groupdata$group,levels=group)
+
+data <- subset(fpkm,select=sample)
+data <- data[rowSums(data)>1,]
+data <- na.omit(data)
+data <- log2(data+1)
+data <- scale(data)
+data <- t(scale(t(data),center=TRUE,scale=F))
+pca <- prcomp(t(data),center=FALSE,scale.=FALSE)
+pca_data <- data.frame(pc1=pca$x[,1],pc2=pca$x[,2],sample=groupdata$sample,group=groupdata$group)
+
+pct <- (pca$sdev^2)/sum(pca$sdev^2)
+pc1 <- sprintf("(%.2f%%)",pct[1]*100)
+pc2 <- sprintf("(%.2f%%)",pct[2]*100)
+
+p <- ggplot(pca_data,aes(x=pc1,y=pc2,colour=group)) +
+    geom_point(size=4) +geom_text_repel(aes(pc1,pc2,label=sample),size=4) +
+    labs(x=paste('PC1 ',pc1,sep=''),y=paste('PC2 ',pc2,sep='')) +
+    geom_hline(yintercept=0,linetype='dotdash',size=0.8,color='grey') +
+    geom_vline(xintercept=0,linetype='dotdash',size=0.8,color='grey') +
+    theme_bw() +
+    theme(plot.title=element_text(hjust=0.5))
+
+pdf(file=paste(prefix,'.pdf',sep=''))
+p
+dev.off()
+
+#svg(file=paste(prefix,'.svg',sep=''))
+#p
+#dev.off()
+ggsave(file=paste(prefix,'.png',sep=''),type='cairo-png',plot=p)

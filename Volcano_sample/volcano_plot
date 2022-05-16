@@ -1,0 +1,110 @@
+
+suppressMessages({
+library(ggplot2)
+library(argparser)})
+
+argv <- arg_parser('')
+argv <- add_argument(argv,"--das", help="the differential analysis result")
+argv <- add_argument(argv,"--cpname", help="the compare name")
+argv <- add_argument(argv,"--level", help="the analysis level")
+argv <- add_argument(argv,"--fc", help="the foldchange vlaue")
+argv <- add_argument(argv,"--pvalue", help="the p value")
+argv <- add_argument(argv,"--padj", help="the p adjust value")
+argv <- add_argument(argv,"--outdir", help="the output dir")
+argv <- parse_args(argv)
+
+das <- argv$das
+cpname <- argv$cpname
+level <- argv$level
+fc <- argv$fc
+p <- argv$pvalue
+q <- argv$padj
+outdir <- argv$outdir
+
+if (!is.na(fc)){fc <-as.numeric(fc)}
+if (!is.na(p)){p <-as.numeric(p)}
+if (!is.na(q)){q <-as.numeric(q)}
+
+das_frame <- read.delim(das,header=TRUE,sep='\t',quote='')
+
+if (is.na(p)) {
+    if (level=='gene') {
+        volcano <- subset(das_frame,select=c(gene_id,log2foldchange,padjust))
+    } else if (level=='transcript') {
+        volcano <- subset(das_frame,select=c(transcript_id,log2foldchange,padjust))
+    }
+    volcano["group"] <- "NO"
+    volcano[which(volcano["padjust"] <= q & volcano["log2foldchange"] >= log2(fc)),"group"] <- "UP"
+    volcano[which(volcano["padjust"] <= q & volcano["log2foldchange"] <= -log2(fc)),"group"] <- "DOWN"
+    NO_number <- nrow(volcano[which(volcano["group"]=='NO'),])
+    UP_number <- nrow(volcano[which(volcano["group"]=='UP'),])
+    DOWN_number <- nrow(volcano[which(volcano["group"]=='DOWN'),])
+    volcano[which(volcano["group"]=='NO'),"group"] <- paste('NO',NO_number,sep=' ')
+    volcano[which(volcano["group"]=='UP'),"group"] <- paste('UP',UP_number,sep=' ')
+    volcano[which(volcano["group"]=='DOWN'),"group"] <- paste('DOWN',DOWN_number,sep=' ')
+    volcano$group <- factor(volcano$group,levels=c(paste('UP',UP_number,sep=' '),paste('DOWN',DOWN_number,sep=' '),paste('NO',NO_number,sep=' ')))
+    fc_min <- min(volcano$log2foldchange[volcano$log2foldchange!=-Inf])
+    fc_max <- max(volcano$log2foldchange[volcano$log2foldchange!=Inf])
+    if(abs(fc_min)>abs(fc_max)){fc_max <- -fc_min}else{fc_min <- -fc_max}
+    breaks <- sort(unique(c(-log2(fc),log2(fc),0,round(seq(fc_min,fc_max,by=(fc_max-fc_min)/4)))))
+    limits <- c(min(breaks), max(breaks))
+    x_breaks <- c(-log10(q),pretty(-log10(volcano$padjust),n=3))
+    if (length(unique(round(pretty(-log10(volcano$padjust),n=3))))==length(round(pretty(-log10(volcano$padjust),n=3)))){
+    x_labels <- c(round(-log10(q),1),round(pretty(-log10(volcano$padjust),n=3)))}else{
+    x_labels <- c(round(-log10(q),1),pretty(-log10(volcano$padjust),n=3))
+    }
+    P <- ggplot(volcano,aes(x=log2foldchange,y=-log10(padjust),group=group,color=group)) +
+        geom_point() +
+        labs(title=cpname,color=paste('padjust<',q,'\n','|log2foldchange|>',log2(fc),sep='')) +
+        theme(plot.title=element_text(hjust=0.5)) +
+        scale_x_continuous(breaks=breaks, limits=limits) +
+        scale_y_continuous(breaks=x_breaks[x_breaks!=0],labels=x_labels[x_labels!=0]) +
+        geom_vline(xintercept=c(-log2(fc),log2(fc)),linetype='dotdash',size=0.8,color='grey') +
+        geom_hline(yintercept=-log10(q),linetype='dotdash',size=0.8,color='grey')
+}
+
+if (is.na(q)) {
+    if (level=='gene') {
+        volcano <- subset(das_frame,select=c(gene_id,log2foldchange,pvalue))
+    } else if (level=='transcript') {
+        volcano <- subset(das_frame,select=c(transcript_id,log2foldchange,pvalue))
+    }
+    volcano["group"] <- "NO"
+    volcano[which(volcano["pvalue"] <= p & volcano["log2foldchange"] >= log2(fc)),"group"] <- "UP"
+    volcano[which(volcano["pvalue"] <= p & volcano["log2foldchange"] <= -log2(fc)),"group"] <- "DOWN"
+    NO_number <- nrow(volcano[which(volcano["group"]=='NO'),])
+    UP_number <- nrow(volcano[which(volcano["group"]=='UP'),])
+    DOWN_number <- nrow(volcano[which(volcano["group"]=='DOWN'),])
+    volcano[which(volcano["group"]=='NO'),"group"] <- paste('NO',NO_number,sep=' ')
+    volcano[which(volcano["group"]=='UP'),"group"] <- paste('UP',UP_number,sep=' ')
+    volcano[which(volcano["group"]=='DOWN'),"group"] <- paste('DOWN',DOWN_number,sep=' ')
+    volcano$group <- factor(volcano$group,levels=c(paste('UP',UP_number,sep=' '),paste('DOWN',DOWN_number,sep=' '),paste('NO',NO_number,sep=' ')))
+    fc_min <- min(volcano$log2foldchange[volcano$log2foldchange!=-Inf]) - 1
+    fc_max <- max(volcano$log2foldchange[volcano$log2foldchange!=Inf]) + 1
+    if(abs(fc_min)>abs(fc_max)){fc_max <- -fc_min}else{fc_min <- -fc_max}
+    breaks <- sort(unique(c(-log2(fc),log2(fc),0,round(seq(fc_min,fc_max,by=(fc_max-fc_min)/4)))))
+    limits <- c(min(breaks), max(breaks))
+    x_breaks <- c(-log10(p),pretty(-log10(volcano$pvalue),n=3))
+    if (length(unique(round(pretty(-log10(volcano$pvalue),n=3))))==length(round(pretty(-log10(volcano$pvalue),n=3)))){
+    x_labels <- c(round(-log10(p),1),round(pretty(-log10(volcano$pvalue),n=3)))}else{
+    x_labels <- c(round(-log10(p),1),pretty(-log10(volcano$pvalue),n=3))
+    }
+    P <- ggplot(volcano,aes(x=log2foldchange,y=-log10(pvalue),group=group,color=group)) +
+        geom_point() +
+        labs(title=cpname,color=paste('pvalue<',p,'\n','|log2foldchange|>',log2(fc),sep='')) +
+        theme(plot.title=element_text(hjust=0.5)) +
+        scale_x_continuous(breaks=breaks, limits=limits) +
+        scale_y_continuous(breaks=x_breaks[x_breaks!=0],labels=x_labels[x_labels!=0]) +
+        geom_vline(xintercept=c(-log2(fc),log2(fc)),linetype='dotdash',size=0.8,color='grey') +
+        geom_hline(yintercept=-log10(p),linetype='dotdash',size=0.8,color='grey')
+}
+
+P <- P + theme(panel.background=element_rect(fill="transparent"),axis.line=element_line())
+
+pdf(file=paste(outdir,'/',cpname,'.Volcanoplot.pdf',sep=''))
+P
+dev.off()
+#svg(filename=paste(outdir,'/',cpname,'.volcano.svg',sep=''))
+#P
+#dev.off()
+ggsave(file=paste(outdir,'/',cpname,'.Volcanoplot.png',sep=''),type='cairo-png',plot=P)
